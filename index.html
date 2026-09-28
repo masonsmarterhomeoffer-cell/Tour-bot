@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luxury Property Showcase & Floor Plan Tour</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .vision-cone {
+      clip-path: polygon(50% 50%, 15% 0%, 85% 0%);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="h-full w-full overflow-hidden flex flex-col font-sans select-none bg-slate-950">
+
+  <!-- Top Header Navigation -->
+  <header class="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 flex items-center justify-between shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
+        <i data-lucide="compass" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <input id="prop-title" type="text" value="The Belcourt Penthouse • Residence 4B" class="font-bold text-sm bg-transparent border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none text-white px-1 py-0.5 transition w-80">
+          <span id="prop-price" class="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">$4,850,000</span>
+        </div>
+        <p id="prop-meta" class="text-xs text-slate-400 px-1 mt-0.5">740 Park Avenue, NY • 3 Beds • 3.5 Baths • 3,240 Sq Ft</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="btn-mode" onclick="toggleMode()" class="px-3.5 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-2 bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20">
+        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+        <span id="mode-text">Studio Mode</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Split Canvas -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Left: Architectural Floor Plan Viewport -->
+    <div id="plan-panel" class="w-[440px] border-r border-slate-800 bg-slate-900/40 flex flex-col shrink-0 transition-all duration-300">
+      
+      <!-- Floor Plan Header -->
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-blue-400"></i>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Residence Floor Plan</span>
+        </div>
+
+        <div id="studio-plan-actions" class="flex items-center gap-2">
+          <label class="text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg cursor-pointer transition flex items-center gap-1">
+            <i data-lucide="upload" class="w-3 h-3 text-blue-400"></i> Blueprint
+            <input type="file" accept="image/*" onchange="uploadBlueprint(event)" class="hidden">
+          </label>
+          <button id="btn-drop-pin" onclick="toggleAddPin()" class="text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition flex items-center gap-1 bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30">
+            <i data-lucide="map-pin" class="w-3 h-3"></i>
+            <span id="pin-btn-text">Drop Pin</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Floor Plan Canvas Container -->
+      <div class="flex-1 p-5 flex items-center justify-center overflow-hidden bg-slate-950/80 relative">
+        <div id="floorplan-canvas" onclick="handlePlanClick(event)" class="w-full aspect-[4/3] rounded-2xl relative border border-slate-800 bg-slate-900/60 p-3 overflow-hidden shadow-inner cursor-default">
+          
+          <!-- Default Schematic Architectural Vector -->
+          <svg id="vector-schematic" class="w-full h-full opacity-35 pointer-events-none" viewBox="0 0 400 300">
+            <rect x="20" y="20" width="360" height="260" fill="none" stroke="#3b82f6" strokeWidth="2.5" />
+            <line x1="20" y1="170" x2="200" y2="170" stroke="#60a5fa" strokeWidth="2" strokeDasharray="4 4" />
+            <line x1="200" y1="20" x2="200" y2="280" stroke="#3b82f6" strokeWidth="2" />
+            <line x1="200" y1="120" x2="380" y2="120" stroke="#3b82f6" strokeWidth="2" />
+            <text x="110" y="100" fill="#94a3b8" fontSize="11" textAnchor="middle" fontWeight="bold">PRIMARY SUITE</text>
+            <text x="110" y="230" fill="#94a3b8" fontSize="11" textAnchor="middle" fontWeight="bold">GREAT SALON</text>
+            <text x="290" y="70" fill="#94a3b8" fontSize="11" textAnchor="middle" fontWeight="bold">GOURMET KITCHEN</text>
+            <text x="290" y="200" fill="#94a3b8" fontSize="11" textAnchor="middle" fontWeight="bold">OUTDOOR TERRACE</text>
+          </svg>
+
+          <!-- Interactive Room Pins & Vision Cones Render Here -->
+          <div id="pins-container" class="absolute inset-0 pointer-events-none"></div>
+        </div>
+      </div>
+
+      <!-- Camera Direction Tuning Bar (Studio Mode) -->
+      <div id="pin-tuning-bar" class="p-3.5 border-t border-slate-800 bg-slate-900/70 hidden space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-400"></i>
+            Camera Angle (<span id="angle-display">0</span>°)
+          </span>
+          <button onclick="deleteCurrentPin()" class="text-rose-400 hover:text-rose-300 text-[11px] flex items-center gap-1">
+            <i data-lucide="trash-2" class="w-3 h-3"></i> Remove Pin
+          </button>
+        </div>
+        <input id="angle-slider" type="range" min="0" max="360" value="0" oninput="updatePinAngle(this.value)" class="w-full accent-blue-500 bg-slate-800">
+      </div>
+
+      <!-- Room Navigation Directory -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950/60">
+        <div class="flex justify-between items-center mb-2.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Property Spaces</span>
+          <label id="upload-photos-btn" class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer flex items-center gap-1 font-semibold">
+            <i data-lucide="plus" class="w-3 h-3"></i> Add Photos
+            <input type="file" multiple accept="image/*" onchange="uploadPhotos(event)" class="hidden">
+          </label>
+        </div>
+        <div id="room-tray" class="flex gap-2 overflow-x-auto pb-1 custom-scroll"></div>
+      </div>
+    </div>
+
+    <!-- Right: High-Resolution Visual Experience -->
+    <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+      
+      <!-- Room High-Res Image Canvas -->
+      <div id="photo-canvas" onclick="handlePhotoClick(event)" class="w-full h-full relative flex items-center justify-center">
+        <img id="main-photo" src="" alt="Property Space" class="w-full h-full object-cover transition-opacity duration-300">
+        
+        <!-- Ambient Vignette -->
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-black/30 pointer-events-none"></div>
+
+        <!-- Spec Feature Pins Layer -->
+        <div id="tags-layer" class="absolute inset-0 pointer-events-none"></div>
+      </div>
+
+      <!-- Floating Room Architectural Spec Card -->
+      <div class="absolute bottom-6 left-6 z-20 max-w-lg bg-slate-900/85 backdrop-blur-md border border-slate-800 p-5 rounded-2xl shadow-2xl pointer-events-auto">
+        <div class="flex justify-between items-start mb-1">
+          <h2 id="room-name" class="text-lg font-bold text-white tracking-wide">Loading...</h2>
+          <span id="room-dims" class="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">--</span>
+        </div>
+        <p id="room-ceiling" class="text-[11px] text-slate-400 font-medium mb-2.5">Ceiling: --</p>
+        <p id="room-desc" class="text-xs text-slate-300 leading-relaxed">Select a space to view architectural details.</p>
+      </div>
+
+      <!-- Feature Detail Popout Drawer -->
+      <div id="tag-popout" class="absolute top-6 right-6 z-20 w-80 bg-slate-900/95 backdrop-blur border border-amber-400/40 p-5 rounded-2xl shadow-2xl hidden pointer-events-auto">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-1.5 text-amber-400 text-xs font-bold uppercase tracking-wider">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Specification</span>
+          </div>
+          <button onclick="closeTagPopout()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <h3 id="tag-title" class="font-bold text-sm text-white">Title</h3>
+        <p id="tag-detail" class="text-xs text-slate-300 mt-1.5 leading-relaxed">Description</p>
+      </div>
+
+      <!-- Studio Tag Placement Indicator -->
+      <div id="studio-tag-toolbar" class="absolute top-6 left-6 z-20 flex items-center gap-2">
+        <button id="btn-add-tag" onclick="toggleAddTag()" class="px-3 py-1.5 rounded-xl text-xs font-semibold border backdrop-blur transition flex items-center gap-1.5 shadow-xl bg-slate-900/80 border-slate-700 text-slate-200 hover:bg-slate-800">
+          <i data-lucide="plus" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span id="tag-btn-text">Tag Feature on Photo</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // State Store
+    const state = {
+      isStudioMode: true,
+      isAddingPin: false,
+      isAddingTag: false,
+      activeRoomId: 'r1',
+      blueprintUrl: null,
+      rooms: [
+        {
+          id: 'r1',
+          name: 'Great Salon & Living Gallery',
+          dimensions: "28' 4\" × 19' 2\"",
+          ceiling: "11' 6\"",
+          imageUrl: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2400&q=85',
+          description: 'South-facing formal living gallery featuring rift-sawn white oak chevron floors and triple-glazed acoustic windows.',
+          pin: { x: 48, y: 64, angle: 0 },
+          tags: [
+            { id: 't1', x: 42, y: 68, title: 'French White Oak', detail: 'Custom chevron layout with UV matte natural oil finish.' },
+            { id: 't2', x: 78, y: 46, title: 'Acoustic Glazing', detail: 'Triple-pane low-E glass with motorized Lutron architectural shades.' }
+          ]
+        },
+        {
+          id: 'r2',
+          name: "Chef's Culinary Kitchen",
+          dimensions: "18' 6\" × 14' 0\"",
+          ceiling: "11' 6\"",
+          imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=2400&q=85',
+          description: 'Entertaining kitchen anchored by a 12-foot monolithic Calacatta Gold marble island and fully integrated Gaggenau appliances.',
+          pin: { x: 74, y: 38, angle: 220 },
+          tags: [
+            { id: 't3', x: 52, y: 58, title: 'Calacatta Gold Island', detail: 'Monolithic waterfall island with dual integrated dishwashers.' }
+          ]
+        },
+        {
+          id: 'r3',
+          name: 'Primary Bedroom Suite',
+          dimensions: "21' 0\" × 16' 4\"",
+          ceiling: "11' 6\"",
+          imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=85',
+          description: 'A quiet master wing with direct terrace access, custom acoustic fabric paneling, and dual boutique walk-in closets.',
+          pin: { x: 26, y: 34, angle: 90 },
+          tags: []
+        },
+        {
+          id: 'r4',
+          name: 'Sunset Entertaining Terrace',
+          dimensions: "34' 0\" × 12' 8\"",
+          ceiling: "Open Air",
+          imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=2400&q=85',
+          description: 'Expansive private terrace with limestone pavers, outdoor gas kitchen connection, and unobstructed skyline views.',
+          pin: { x: 50, y: 88, angle: 340 },
+          tags: []
+        }
+      ]
+    };
+
+    function init() {
+      render();
+      lucide.createIcons();
+    }
+
+    function render() {
+      const activeRoom = state.rooms.find(r => r.id === state.activeRoomId) || state.rooms[0];
+      
+      // Update photo & specs
+      document.getElementById('main-photo').src = activeRoom.imageUrl;
+      document.getElementById('room-name').innerText = activeRoom.name;
+      document.getElementById('room-dims').innerText = activeRoom.dimensions;
+      document.getElementById('room-ceiling').innerText = `Ceiling: ${activeRoom.ceiling}`;
+      document.getElementById('room-desc').innerText = activeRoom.description;
+
+      renderPins();
+      renderTags(activeRoom);
+      renderRoomTray();
+
+      // Update Pin Tuning Bar
+      const tuningBar = document.getElementById('pin-tuning-bar');
+      if (state.isStudioMode && activeRoom.pin) {
+        tuningBar.classList.remove('hidden');
+        document.getElementById('angle-slider').value = activeRoom.pin.angle;
+        document.getElementById('angle-display').innerText = activeRoom.pin.angle;
+      } else {
+        tuningBar.classList.add('hidden');
+      }
+
+      // Studio vs Client Mode visibility
+      const studioPlanActions = document.getElementById('studio-plan-actions');
+      const uploadPhotosBtn = document.getElementById('upload-photos-btn');
+      const studioTagToolbar = document.getElementById('studio-tag-toolbar');
+
+      if (state.isStudioMode) {
+        studioPlanActions.classList.remove('hidden');
+        uploadPhotosBtn.classList.remove('hidden');
+        studioTagToolbar.classList.remove('hidden');
+        document.getElementById('mode-text').innerText = 'Studio Mode';
+      } else {
+        studioPlanActions.classList.add('hidden');
+        uploadPhotosBtn.classList.add('hidden');
+        studioTagToolbar.classList.add('hidden');
+        document.getElementById('mode-text').innerText = 'Client View';
+      }
+
+      lucide.createIcons();
+    }
+
+    function renderPins() {
+      const container = document.getElementById('pins-container');
+      container.innerHTML = '';
+
+      state.rooms.forEach(r => {
+        if (!r.pin) return;
+        const isSelected = r.id === state.activeRoomId;
+        const pinEl = document.createElement('div');
+        pinEl.className = 'absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto group';
+        pinEl.style.left = `${r.pin.x}%`;
+        pinEl.style.top = `${r.pin.y}%`;
+
+        pinEl.onclick = (e) => {
+          e.stopPropagation();
+          selectRoom(r.id);
+        };
+
+        pinEl.innerHTML = `
+          ${isSelected ? `
+            <div style="transform: rotate(${r.pin.angle - 90}deg)" class="absolute w-36 h-36 -top-16 -left-16 pointer-events-none transition-transform duration-150 origin-center">
+              <div class="w-full h-full bg-gradient-to-t from-blue-500/40 via-blue-400/15 to-transparent vision-cone"></div>
+            </div>
+          ` : ''}
+          <div class="relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${
+            isSelected 
+              ? 'bg-blue-600 border-white shadow-[0_0_16px_#3b82f6] scale-110' 
+              : 'bg-slate-900 border-slate-600 hover:border-blue-400 hover:scale-105'
+          }">
+            <i data-lucide="camera" class="w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-300'}"></i>
+          </div>
+          <span class="absolute top-9 left-1/2 -translate-x-1/2 text-[10px] font-semibold px-2 py-0.5 rounded whitespace-nowrap shadow-xl border pointer-events-none transition ${
+            isSelected 
+              ? 'bg-blue-600 border-blue-400 text-white' 
+              : 'bg-slate-950/90 border-slate-800 text-slate-300 group-hover:border-slate-700'
+          }">
+            ${r.name}
+          </span>
+        `;
+        container.appendChild(pinEl);
+      });
+    }
+
+    function renderTags(room) {
+      const container = document.getElementById('tags-layer');
+      container.innerHTML = '';
+
+      (room.tags || []).forEach(t => {
+        const tagEl = document.createElement('div');
+        tagEl.className = 'absolute -translate-x-1/2 -translate-y-1/2 z-20 group cursor-pointer pointer-events-auto';
+        tagEl.style.left = `${t.x}%`;
+        tagEl.style.top = `${t.y}%`;
+
+        tagEl.onclick = (e) => {
+          e.stopPropagation();
+          showTagPopout(t);
+        };
+
+        tagEl.innerHTML = `
+          <div class="relative flex items-center justify-center">
+            <div class="w-6 h-6 rounded-full bg-slate-900/80 border border-white/80 backdrop-blur shadow-2xl flex items-center justify-center group-hover:scale-125 transition-transform">
+              <i data-lucide="sparkles" class="w-3 h-3 text-amber-300"></i>
+            </div>
+            <div class="absolute -inset-1 rounded-full border border-amber-300/60 animate-ping pointer-events-none"></div>
+          </div>
+          <span class="absolute top-7 left-1/2 -translate-x-1/2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-950/90 text-white border border-slate-700 whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity">
+            ${t.title}
+          </span>
+        `;
+        container.appendChild(tagEl);
+      });
+    }
+
+    function renderRoomTray() {
+      const tray = document.getElementById('room-tray');
+      tray.innerHTML = '';
+
+      state.rooms.forEach(r => {
+        const isSelected = r.id === state.activeRoomId;
+        const btn = document.createElement('button');
+        btn.className = `flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border shrink-0 ${
+          isSelected 
+            ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' 
+            : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
+        }`;
+        btn.onclick = () => selectRoom(r.id);
+        btn.innerHTML = `
+          <div class="w-5 h-5 rounded-md bg-cover bg-center border border-white/20" style="background-image: url('${r.imageUrl}')"></div>
+          <span>${r.name}</span>
+        `;
+        tray.appendChild(btn);
+      });
+    }
+
+    function selectRoom(roomId) {
+      state.activeRoomId = roomId;
+      closeTagPopout();
+      render();
+    }
+
+    function toggleMode() {
+      state.isStudioMode = !state.isStudioMode;
+      state.isAddingPin = false;
+      state.isAddingTag = false;
+      render();
+    }
+
+    function toggleAddPin() {
+      state.isAddingPin = !state.isAddingPin;
+      const btn = document.getElementById('btn-drop-pin');
+      const text = document.getElementById('pin-btn-text');
+      const canvas = document.getElementById('floorplan-canvas');
+
+      if (state.isAddingPin) {
+        btn.className = "text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition flex items-center gap-1 bg-amber-500 border-amber-400 text-slate-950 font-bold animate-pulse";
+        text.innerText = "Click Floor...";
+        canvas.classList.add('cursor-crosshair', 'ring-2', 'ring-amber-500/50');
+      } else {
+        btn.className = "text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition flex items-center gap-1 bg-blue-600/20 border-blue-500/40 text-blue-400 hover:bg-blue-600/30";
+        text.innerText = "Drop Pin";
+        canvas.classList.remove('cursor-crosshair', 'ring-2', 'ring-amber-500/50');
+      }
+    }
+
+    function handlePlanClick(e) {
+      if (!state.isAddingPin) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+
+      const activeRoom = state.rooms.find(r => r.id === state.activeRoomId);
+      if (activeRoom) {
+        activeRoom.pin = { x, y, angle: 0 };
+      }
+      toggleAddPin();
+      render();
+    }
+
+    function updatePinAngle(val) {
+      const activeRoom = state.rooms.find(r => r.id === state.activeRoomId);
+      if (activeRoom && activeRoom.pin) {
+        activeRoom.pin.angle = parseInt(val);
+        document.getElementById('angle-display').innerText = val;
+        renderPins();
+      }
+    }
+
+    function deleteCurrentPin() {
+      const activeRoom = state.rooms.find(r => r.id === state.activeRoomId);
+      if (activeRoom) {
+        activeRoom.pin = null;
+        render();
+      }
+    }
+
+    function toggleAddTag() {
+      state.isAddingTag = !state.isAddingTag;
+      const btn = document.getElementById('btn-add-tag');
+      const text = document.getElementById('tag-btn-text');
+
+      if (state.isAddingTag) {
+        btn.className = "px-3 py-1.5 rounded-xl text-xs font-semibold border backdrop-blur transition flex items-center gap-1.5 shadow-xl bg-amber-500 border-amber-400 text-slate-950 font-bold animate-pulse";
+        text.innerText = "Click on Photo...";
+      } else {
+        btn.className = "px-3 py-1.5 rounded-xl text-xs font-semibold border backdrop-blur transition flex items-center gap-1.5 shadow-xl bg-slate-900/80 border-slate-700 text-slate-200 hover:bg-slate-800";
+        text.innerText = "Tag Feature on Photo";
+      }
+    }
+
+    function handlePhotoClick(e) {
+      if (!state.isAddingTag) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+
+      const title = prompt("Enter Feature Title (e.g., Calacatta Marble, Custom Lighting):", "Architectural Finish");
+      if (!title) { toggleAddTag(); return; }
+      const detail = prompt("Enter Description / Specifications:", "Bespoke architectural finish with high-end fixtures.");
+
+      const activeRoom = state.rooms.find(r => r.id === state.activeRoomId);
+      if (activeRoom) {
+        activeRoom.tags = activeRoom.tags || [];
+        activeRoom.tags.push({ id: 'tag_' + Date.now(), x, y, title, detail: detail || '' });
+      }
+      toggleAddTag();
+      render();
+    }
+
+    function showTagPopout(tag) {
+      document.getElementById('tag-title').innerText = tag.title;
+      document.getElementById('tag-detail').innerText = tag.detail;
+      document.getElementById('tag-popout').classList.remove('hidden');
+    }
+
+    function closeTagPopout() {
+      document.getElementById('tag-popout').classList.add('hidden');
+    }
+
+    function uploadPhotos(e) {
+      const files = Array.from(e.target.files);
+      files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const newRoom = {
+            id: 'room_' + Date.now() + '_' + index,
+            name: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+            dimensions: "20' × 15'",
+            ceiling: "10' 6\"",
+            imageUrl: ev.target.result,
+            description: "High-resolution architectural interior.",
+            pin: null,
+            tags: []
+          };
+          state.rooms.push(newRoom);
+          render();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function uploadBlueprint(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const canvas = document.getElementById('floorplan-canvas');
+        canvas.style.background = `url(${ev.target.result}) center/contain no-repeat #0a0f1d`;
+        document.getElementById('vector-schematic').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    init();
+  </script>
+</body>
+</html>
